@@ -1,4 +1,5 @@
 const FundRaise = artifacts.require('./FundRaise.sol')
+const { should, EVMThrow } = require('./helpers')
 
 contract('FundRaise', function ([owner, donor]) {
     let fundRaise
@@ -8,31 +9,29 @@ contract('FundRaise', function ([owner, donor]) {
     })
 
     it('has an owner', async function () {
-        assert.equal(await fundRaise.owner(), owner)
+        const fundRaiseOwner = await fundRaise.owner()
+
+        fundRaiseOwner.should.be.equal(owner)
     })
 
     it('accepts funds', async function () {
         await fundRaise.sendTransaction({ value: 1e+18, from: donor })
 
         const fundRaiseAddress = await fundRaise.address
-        assert.equal(web3.eth.getBalance(fundRaiseAddress).toNumber(), 1e+18)
+        web3.eth.getBalance(fundRaiseAddress).should.be.bignumber.equal(1e+18)
     })
 
     it('is able to pause and unpause fund activity', async function () {
         await fundRaise.pause()
+        fundRaise.sendTransaction({ value: 1e+18, from: donor }).should.be.rejectedWith(EVMThrow)
 
-        try {
-            await fundRaise.sendTransaction({ value: 1e+18, from: donor })
-            assert.fail()
-        } catch (error) {
-            assert(error.toString().includes('invalid opcode'), error.toString())
-        }
         const fundRaiseAddress = await fundRaise.address
-        assert.equal(web3.eth.getBalance(fundRaiseAddress).toNumber(), 0)
+        web3.eth.getBalance(fundRaiseAddress).should.be.bignumber.equal(0)
 
+        // unpausing it
         await fundRaise.unpause()
         await fundRaise.sendTransaction({ value: 1e+18, from: donor })
-        assert.equal(web3.eth.getBalance(fundRaiseAddress).toNumber(), 1e+18)
+        web3.eth.getBalance(fundRaiseAddress).should.be.bignumber.equal(1e+18)
     })
 
     it('permits owner to receive funds', async function () {
@@ -40,11 +39,12 @@ contract('FundRaise', function ([owner, donor]) {
         const ownerBalanceBeforeRemovingFunds = web3.eth.getBalance(owner).toNumber()
 
         const fundRaiseAddress = await fundRaise.address
-        assert.equal(web3.eth.getBalance(fundRaiseAddress).toNumber(), 1e+18)
+        web3.eth.getBalance(fundRaiseAddress).should.be.bignumber.equal(1e+18)
 
+        // removing funds
         await fundRaise.removeFunds()
+        web3.eth.getBalance(fundRaiseAddress).should.be.bignumber.equal(0)
+        web3.eth.getBalance(owner).should.be.bignumber.above(ownerBalanceBeforeRemovingFunds)
 
-        assert.equal(web3.eth.getBalance(fundRaiseAddress).toNumber(), 0)
-        assert.isAbove(web3.eth.getBalance(owner).toNumber(), ownerBalanceBeforeRemovingFunds)
     })
 })
