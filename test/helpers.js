@@ -5,6 +5,6 @@ const should = require('chai')
     .use(require('chai-bignumber')(BigNumber))
     .should()
 
-const EVMThrow = 'invalid opcode'
+const EVMThrow = 'VM Exception'
 
 module.exports = { should, EVMThrow }
